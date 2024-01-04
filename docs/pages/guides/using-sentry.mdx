@@ -12,6 +12,7 @@ import { Terminal } from '~/ui/components/Snippet';
 import { Step } from '~/ui/components/Step';
 import { Tab, Tabs } from '~/ui/components/Tabs';
 import { CODE } from '~/ui/components/Text';
+import { Diagram } from '~/ui/components/Diagram';
 
 [Sentry](http://getsentry.com/) is a crash reporting platform that provides you with **real-time insight into production deployments with info to reproduce and fix crashes**.
 
@@ -468,7 +469,52 @@ Using the above instructions, no additional work is needed to integrate Sentry i
 
 ## Usage with EAS Update
 
-In the current state of SDK 50 beta, EAS Update is not yet supported. We're working on making it easier than ever to integrate updates with Sentry, and we plan to release along with SDK 50 proper.
+### Tag Configuration
+Configure Sentry to tag your scope with information about your update. This will allow you to see which errors are happening on which updates in the Sentry dashboard.
+
+Do this in the global scope, as early as possible in your application's lifecycle.
+  
+```js
+import * as Updates from "expo-updates";
+
+Sentry.init({
+  // dsn, release, dist, etc...
+});
+
+Sentry.configureScope((scope) => {
+  scope.setTag("expo-update-group-id", Updates.manifest?.metadata?.updateGroup);
+  scope.setTag("expo-update-id", Updates.updateId);
+  // This will be `true` if the update is the one embedded in the build, and not one downloaded from the updates server.
+  scope.setTag("expo-is-embedded-update", Updates.isEmbeddedLaunch);
+  scope.setTag(
+    "expo-update-debug-url",
+    Updates.isEmbeddedLaunch
+      ? "not applicable for embedded updates"
+      : `https://expo.dev/accounts/${Updates.manifest?.extra?.expoClient?.owner}/projects/${Updates.manifest?.extra?.expoClient?.slug}/updates/${Updates.manifest?.metadata?.updateGroup}`
+  );
+});
+```
+
+Once configured, information about the associated update will show up in an error's tag section:
+
+<Diagram
+  source="/static/images/guides/sentry-tags.png"
+  alt="Sentry update tags"
+  disableSrcSet
+/>
+
+
+### Upload Source Maps
+After you run `eas update`, you will need to upload the source maps to Sentry. You will need to install the `jq` binary with package managers like apt-get or brew to run the following commands:
+
+```sh
+# Add debug_id field to the source maps in the dist folder
+find dist -type f -name '*.map' -exec sh -c 'jq ".debug_id = .debugId" "{}" > "{}.tmp" && mv "{}.tmp" "{}"' \;
+
+# Upload the source maps
+SENTRY_PROJECT=[your-project] SENTRY_AUTH_TOKEN=[your-token] node_modules/@sentry/cli/bin/sentry-cli sourcemaps upload --debug-id-reference dist/_expo/static/js/ios/*
+SENTRY_PROJECT=[your-project] SENTRY_AUTH_TOKEN=[your-token] node_modules/@sentry/cli/bin/sentry-cli sourcemaps upload --debug-id-reference dist/_expo/static/js/android/*
+```
 
 </Tab>
 
