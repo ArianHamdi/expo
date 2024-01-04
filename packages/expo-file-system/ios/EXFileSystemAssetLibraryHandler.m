@@ -25,6 +25,7 @@
     result[@"uri"] = fileUri;
     result[@"modificationTime"] = @(asset.modificationDate.timeIntervalSince1970);
     if (options[@"md5"] || options[@"size"]) {
+#if TARGET_OS_IOS || TARGET_OS_TV
       [[PHImageManager defaultManager] requestImageDataForAsset:asset options:nil resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, UIImageOrientation orientation, NSDictionary * _Nullable info) {
         result[@"size"] = @(imageData.length);
         if (options[@"md5"]) {
@@ -32,6 +33,7 @@
         }
         resolve(result);
       }];
+#endif
     } else {
       resolve(result);
     }
@@ -84,7 +86,7 @@
         [EXFileSystemAssetLibraryHandler copyData:data toPath:toPath resolver:resolve rejecter:reject];
       }];
     } else {
-      [[PHImageManager defaultManager] requestImageDataForAsset:asset options:nil resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, UIImageOrientation orientation, NSDictionary * _Nullable info) {
+      [[PHImageManager defaultManager] requestImageDataAndOrientationForAsset:asset options:nil resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, CGImagePropertyOrientation orientation, NSDictionary * _Nullable info) {
         [EXFileSystemAssetLibraryHandler copyData:imageData toPath:toPath resolver:resolve rejecter:reject];
       }];
     }
@@ -110,10 +112,12 @@
       hasWarned = YES;
     }
     return nil;
-#else
+#elif TARGET_OS_IOS || TARGET_OS_TV
     // This is the older, deprecated way of fetching assets from assets-library
     // using the "assets-library://" protocol
     return [PHAsset fetchAssetsWithALAssetURLs:@[url] options:nil];
+#elif TARGET_OS_OSX
+    return nil;
 #endif
   }
 
