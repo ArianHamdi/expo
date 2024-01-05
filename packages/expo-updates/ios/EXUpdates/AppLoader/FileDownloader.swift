@@ -110,7 +110,7 @@ public final class FileDownloader {
 
   public static let assetFilesQueue: DispatchQueue = DispatchQueue(label: "expo.controller.AssetFilesQueue")
 
-  public func downloadFile(
+  public func downloadAsset(
     fromURL url: URL,
     verifyingHash expectedBase64URLEncodedSHA256Hash: String?,
     toPath destinationPath: String,
@@ -163,7 +163,7 @@ public final class FileDownloader {
           destinationPath,
           error.localizedDescription
         )
-        self.logger.error(message: errorMessage, code: UpdatesErrorCode.unknown)
+        self.logger.error(message: errorMessage, code: UpdatesErrorCode.assetsFailedToLoad)
         errorBlock(NSError(
           domain: ErrorDomain,
           code: FileDownloaderErrorCode.FileWriteError.rawValue,
@@ -175,6 +175,7 @@ public final class FileDownloader {
         return
       }
     } errorBlock: { error in
+      self.logger.error(message: error.localizedDescription, code: UpdatesErrorCode.assetsFailedToLoad)
       errorBlock(error)
     }
   }
